@@ -32,12 +32,14 @@ public class GameBoard extends View {
     private float radius = 0;
     private int lastCol = 0;
     private int currentPlayer = 1;
-    private int currentWinner = 0;
+    private boolean moveAllowed = true;
 
     private int[][] boardState;
     private int[] nextPlayer = {1, 2, 1};
     private int[][] moves = {{1, 0}, {1, 1}, {0, 1}, {1, -1}};
     private Paint[] gamePaints = new Paint[3];
+    private static MinMax computerPlayer;
+    private static State theBoard;
 
     public GameBoard(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -69,7 +71,9 @@ public class GameBoard extends View {
         this.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                play(lastCol);
+                if(moveAllowed) {
+                    play_ai();
+                }
             }
         });
     }
@@ -90,8 +94,7 @@ public class GameBoard extends View {
                 }
                 this.invalidate();
                 playPiece.start();
-                currentWinner = has_winner();
-                if(currentWinner != 0){
+                if(theBoard.checkGameOver()){
                     victory.start();
                     mhandler.postDelayed(new Runnable() {
                         @Override
@@ -106,8 +109,30 @@ public class GameBoard extends View {
         }
     }
 
+    private void play_ai(){
+        moveAllowed = false;
+        theBoard.makeMove(lastCol, State.X);
+        play(lastCol);
+        mhandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if(!theBoard.checkGameOver()) {
+                    GamePlay computerMove = computerPlayer.getNextMove(theBoard);
+                    theBoard.makeMove(computerMove.col, State.O);
+                    play(computerMove.col);
+                }
+                moveAllowed = true;
+            }
+        }, 500);
+
+    }
+
+
     private void reset(){
-        currentWinner = 0;
+        moveAllowed = true;
+        computerPlayer = new MinMax(State.O);
+        theBoard = new State();
+        currentPlayer = 1;
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 boardState[row][col] = 0;
